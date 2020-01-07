@@ -74,6 +74,7 @@ QMC_gibbs_sampler <- function( Y,
   phi[1] <- init_val
   # gibbs sampling
   rng_flag <- TRUE
+  init_flag <- TRUE
 for(i in 2:iterations ){
     current_sigma <- phi[ i - 1 ] * X_set
 
@@ -82,16 +83,17 @@ for(i in 2:iterations ){
                           mean = dist_mean,
                           sigma = current_sigma, 
                           time_rng = rng_flag,
-                          reinit = FALSE)
+                          reinit = init_flag)
 
     phi[i] <- 1/( rgamma_qmc_2( 1,
                                 shape = ( nrow(X)/2 + phi_pars[1] ),
                                 scale = (.5*( t(Y - X %*% B[i,]) %*%
                                 (Y - X %*% B[i,])) + phi_pars[2]),
                   time_rng = rng_flag, 
-                  reinit = FALSE))
+                  reinit = init_flag))
 
   rng_flag <- FALSE
+  init_flag <- FALSE
   }
   # burn_in, trim
   keep_draws <- seq( burn_in , iterations, trim_samples )
@@ -119,24 +121,38 @@ cpu_original <- cpu[,10]
 cpu <- cpu[,1:9]
 cpu_mm <- model.matrix(prp~., cpu)
 
+
+# baseline using glmnet (because lm will willingly throw an error, and thanks to
+# model matrix we are suddenly in a p>n situation)
 try <- glmnet::cv.glmnet(x = cpu_mm, y = unlist(cpu[,9]))
 
 predict(try, cpu_mm)
 
-try_2 <- lm(cpu)
 
-
+# lets just not use the model matrix and restrict ourselves to things unrelated to 
+# producer or model
+# MC integration - vanilla gibbs sampling
 gibbs <- gibbs_sampler( Y = unlist(cpu[,9]),
                         X = as.matrix( cpu[,-c(1,2,9)], ncol = 6),
                         burn_in = 5000,
                         iterations = 50000 )
-
+# QMC integration - not so vanilla gibbs sampling
 gibbs_qmc <- QMC_gibbs_sampler( Y = unlist(cpu[,9]),
                           X = as.matrix( cpu[,-c(1,2,9)], ncol = 6),
                           burn_in = 5000,
                           iterations = 50000 )
 
-
-unlist(lapply(gibbs[,1:6], mean)) - unlist(lapply(gibbs_qmc[,1:6], mean)) 
+# generate all means of resulting chains after some burnin 
+unlist(lapply(gibbs[,1:6], mean))
+unlist(lapply(gibbs_qmc[,1:6], mean))
+# find the difference between vanilla and QMC
+unlist(lapply(gibbs[,1:6], mean)) - unlist(lapply(gibbs_qmc[,1:6], mean))
+# and ratios of sd/variance
+unlist(lapply(gibbs[,1:6], sd))
+unlist(lapply(gibbs_qmc[,1:6], sd))
 unlist(lapply(gibbs[,1:6], sd))/unlist(lapply(gibbs_qmc[,1:6], sd)) 
+unlist(lapply(gibbs[,1:6], var))/unlist(lapply(gibbs_qmc[,1:6], var)) 
+
+
+
 
