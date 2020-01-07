@@ -147,12 +147,27 @@ unlist(lapply(gibbs[,1:6], mean))
 unlist(lapply(gibbs_qmc[,1:6], mean))
 # find the difference between vanilla and QMC
 unlist(lapply(gibbs[,1:6], mean)) - unlist(lapply(gibbs_qmc[,1:6], mean))
-# and ratios of sd/variance
-unlist(lapply(gibbs[,1:6], sd))
-unlist(lapply(gibbs_qmc[,1:6], sd))
-unlist(lapply(gibbs[,1:6], sd))/unlist(lapply(gibbs_qmc[,1:6], sd)) 
+# and ratios of variance
+unlist(lapply(gibbs[,1:6], var))
+unlist(lapply(gibbs_qmc[,1:6], var))
 unlist(lapply(gibbs[,1:6], var))/unlist(lapply(gibbs_qmc[,1:6], var)) 
 
+
+plottable <- rbind(unlist(lapply(gibbs[,1:6], mean)),
+                   unlist(lapply(gibbs_qmc[,1:6], mean)),
+                   (unlist(lapply(gibbs[,1:6], mean)) -
+                      unlist(lapply(gibbs_qmc[,1:6], mean))))
+rownames(plottable) <- c("MC", "QMC", "Rozdiel")
+colnames(plottable) <- paste("Koef. ", colnames(plottable), sep = "")
+xtable::xtable(plottable)
+
+plottable <- rbind(unlist(lapply(gibbs[,1:6], var)),
+                   unlist(lapply(gibbs_qmc[,1:6], var)),
+                   (unlist(lapply(gibbs[,1:6], var))/
+                      unlist(lapply(gibbs_qmc[,1:6], var))))
+rownames(plottable) <- c("MC", "QMC", "Násobok")
+colnames(plottable) <- paste("Var. ", colnames(plottable), sep = "")
+xtable::xtable(plottable)
 
 
 
